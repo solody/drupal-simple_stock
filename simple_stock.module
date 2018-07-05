@@ -25,27 +25,6 @@ function simple_stock_help($route_name, RouteMatchInterface $route_match) {
 }
 
 /**
- * Implements hook_entity_base_field_info().
- * @throws \Drupal\Component\Plugin\Exception\PluginException
- */
-function simple_stock_entity_base_field_info(EntityTypeInterface $entity_type) {
-  $fields = [];
-
-  // 加载所有插件
-  /** @var Drupal\simple_stock\Plugin\StockTypeManager $stock_type_manager */
-  $stock_type_manager = \Drupal::getContainer()->get('plugin.manager.stock_type');
-  foreach ($stock_type_manager->getDefinitions() as $plugin_id => $plugin_definition) {
-    /** @var Drupal\simple_stock\Plugin\StockTypeInterface $stock_type */
-    $stock_type = $stock_type_manager->createInstance($plugin_id);
-    if ($stock_type->supportEntityType($entity_type)) {
-      $fields = $stock_type->stockBaseFieldDefinitions() + $fields;
-    }
-  }
-
-  return $fields;
-}
-
-/**
  * Implements hook_ENTITY_TYPE_presave
  *
  * 在订单项创建时，扣减库存

@@ -5,6 +5,7 @@
  * Contains simple_stock_normal.module.
  */
 
+use Drupal\Core\Entity\EntityTypeInterface;
 use Drupal\Core\Routing\RouteMatchInterface;
 
 /**
@@ -21,4 +22,22 @@ function simple_stock_normal_help($route_name, RouteMatchInterface $route_match)
 
     default:
   }
+}
+
+/**
+ * Implements hook_entity_base_field_info().
+ * @throws \Drupal\Component\Plugin\Exception\PluginException
+ */
+function simple_stock_normal_entity_base_field_info(EntityTypeInterface $entity_type) {
+  $fields = [];
+
+  /** @var Drupal\simple_stock\Plugin\StockTypeManager $stock_type_manager */
+  $stock_type_manager = \Drupal::getContainer()->get('plugin.manager.stock_type');
+  /** @var Drupal\simple_stock\Plugin\StockTypeInterface $stock_type */
+  $stock_type = $stock_type_manager->createInstance('normal');
+  if ($stock_type->supportEntityType($entity_type)) {
+    $fields = $stock_type->stockBaseFieldDefinitions() + $fields;
+  }
+
+  return $fields;
 }
