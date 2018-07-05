@@ -21,7 +21,7 @@ class Fixed extends StockTypeBase {
   }
 
   public function supportEntityType(EntityTypeInterface $entity_type) {
-    return $entity_type->id() === 'commerce_product_variation';
+    return $entity_type->id() === 'commerce_product_variation' || $entity_type->id() === 'booking_unit';
   }
 
   public function stockBaseFieldDefinitions() {
