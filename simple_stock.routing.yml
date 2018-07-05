@@ -1,0 +1,8 @@
+
+simple_stock.default_controller_hello:
+  path: '/simple_stock/hello/{name}'
+  defaults:
+    _controller: '\Drupal\simple_stock\Controller\DefaultController::hello'
+    _title: 'test'
+  requirements:
+    _permission: 'access content'

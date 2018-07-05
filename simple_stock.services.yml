@@ -1,0 +1,9 @@
+services:
+  plugin.manager.stock_type:
+    class: Drupal\simple_stock\Plugin\StockTypeManager
+    parent: default_plugin_manager
+  simple_stock.order_subscriber:
+    class: Drupal\simple_stock\EventSubscriber\OrderSubscriber
+    arguments: []
+    tags:
+      - { name: event_subscriber }

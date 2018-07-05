@@ -1,0 +1,146 @@
+<?php
+
+/**
+ * @file
+ * Contains simple_stock.module.
+ */
+
+use Drupal\Core\Entity\EntityTypeInterface;
+use Drupal\Core\Routing\RouteMatchInterface;
+
+/**
+ * Implements hook_help().
+ */
+function simple_stock_help($route_name, RouteMatchInterface $route_match) {
+  switch ($route_name) {
+    // Main module help for the simple_stock module.
+    case 'help.page.simple_stock':
+      $output = '';
+      $output .= '<h3>' . t('About') . '</h3>';
+      $output .= '<p>' . t('My Awesome Module') . '</p>';
+      return $output;
+
+    default:
+  }
+}
+
+/**
+ * Implements hook_entity_base_field_info().
+ * @throws \Drupal\Component\Plugin\Exception\PluginException
+ */
+function simple_stock_entity_base_field_info(EntityTypeInterface $entity_type) {
+  $fields = [];
+
+  // 加载所有插件
+  /** @var Drupal\simple_stock\Plugin\StockTypeManager $stock_type_manager */
+  $stock_type_manager = \Drupal::getContainer()->get('plugin.manager.stock_type');
+  foreach ($stock_type_manager->getDefinitions() as $plugin_id => $plugin_definition) {
+    /** @var Drupal\simple_stock\Plugin\StockTypeInterface $stock_type */
+    $stock_type = $stock_type_manager->createInstance($plugin_id);
+    if ($stock_type->supportEntityType($entity_type)) {
+      $fields = $stock_type->stockBaseFieldDefinitions() + $fields;
+    }
+  }
+
+  return $fields;
+}
+
+/**
+ * Implements hook_ENTITY_TYPE_presave
+ *
+ * 在订单项创建时，扣减库存
+ * 在订单项更新时，调整库存
+ *
+ * @param \Drupal\commerce_order\Entity\OrderItemInterface $order_item
+ */
+function simple_stock_commerce_order_item_presave(\Drupal\commerce_order\Entity\OrderItemInterface $order_item) {
+  if ($order_item->isNew()) {
+    // 在订单项创建时，扣减库存
+    _simple_stock_adjust_stock($order_item->getPurchasedEntity(), 'subtract', (int)$order_item->getQuantity());
+  } else {
+    // 在订单项更新时，调整库存
+    $origin = $order_item->original;
+    if ($origin instanceof \Drupal\commerce_order\Entity\OrderItemInterface) {
+      $rs = (int)$order_item->getQuantity() - (int)$origin->getQuantity();
+      if ($rs > 0) {
+        // 扣减库存
+        _simple_stock_adjust_stock($order_item->getPurchasedEntity(), 'subtract', abs($rs));
+      } else if ($rs < 0) {
+        // 恢复库存
+        _simple_stock_adjust_stock($order_item->getPurchasedEntity(), 'recover', abs($rs));
+      }
+    }
+  }
+}
+
+/**
+ * Implements hook_ENTITY_TYPE_predelete
+ *
+ * 在订单项删除时，如果订单是非取消订单，恢复库存
+ *
+ * @param \Drupal\Core\Entity\EntityInterface $entity
+ */
+function simple_stock_commerce_order_item_predelete(\Drupal\commerce_order\Entity\OrderItemInterface $order_item) {
+  $order = $order_item->getOrder();
+  if ($order->getState()->value !== 'canceled') {
+    _simple_stock_adjust_stock($order_item->getPurchasedEntity(), 'recover', (int)$order_item->getQuantity());
+  }
+}
+
+
+/**
+ * Implements hook_cron
+ *
+ * 5分钟内没有place（支付）的订单，执行取消操作，那么库存将恢复
+ *
+ * @throws \Drupal\Component\Plugin\Exception\InvalidPluginDefinitionException
+ * @throws \Drupal\Component\Plugin\Exception\PluginNotFoundException
+ */
+function simple_stock_cron() {
+  \Drupal::logger('simple_stock')->notice('test!!!');
+  $commerce_order_query = \Drupal::entityTypeManager()->getStorage('commerce_order')->getQuery();
+
+  $time = new DateTime('now');
+  $time->sub(new DateInterval('PT5M'));
+
+  \Drupal::logger('simple_stock')->notice($time->getTimestamp());
+
+  $commerce_order_query->condition('state', 'draft')
+    ->condition('created', $time->getTimestamp(), '<');
+
+  $rs = $commerce_order_query->execute();
+
+  \Drupal::logger('simple_stock')->notice(count($rs). '个订单超时未支付：' . var_export($rs, true));
+
+  if (count($rs)) {
+    foreach ($rs as $order_id) {
+      $commerce_order = \Drupal\commerce_order\Entity\Order::load($order_id);
+      if (isset($commerce_order->getState()->getTransitions()['cancel'])){
+        $commerce_order->getState()->applyTransition($commerce_order->getState()->getTransitions()['cancel']);
+        $commerce_order->save();
+        \Drupal::logger('simple_stock')->notice('对超时订单'.$commerce_order->id() . '成功执行了取消操作');
+      }
+    }
+  }
+}
+
+
+function _simple_stock_adjust_stock($purchased_entity, $adjust_type, $number) {
+  /** @var Drupal\simple_stock\Plugin\StockTypeManager $stock_type_manager */
+  $stock_type_manager = \Drupal::getContainer()->get('plugin.manager.stock_type');
+  foreach ($stock_type_manager->getDefinitions() as $plugin_id => $plugin_definition) {
+    /** @var Drupal\simple_stock\Plugin\StockTypeInterface $stock_type */
+    $stock_type = $stock_type_manager->createInstance($plugin_id);
+    if ($stock_type->supportEntity($purchased_entity)) {
+      switch ($adjust_type) {
+        case 'subtract':
+          $stock_type->subtractStock($purchased_entity, $number);
+          break;
+
+        case 'recover':
+          $stock_type->recoverStock($purchased_entity, $number);
+          break;
+      }
+    }
+  }
+}
