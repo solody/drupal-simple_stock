@@ -33,20 +33,23 @@ function simple_stock_help($route_name, RouteMatchInterface $route_match) {
  * @param \Drupal\commerce_order\Entity\OrderItemInterface $order_item
  */
 function simple_stock_commerce_order_item_presave(\Drupal\commerce_order\Entity\OrderItemInterface $order_item) {
-  if ($order_item->isNew()) {
-    // 在订单项创建时，扣减库存
-    _simple_stock_adjust_stock($order_item->getPurchasedEntity(), 'subtract', (int)$order_item->getQuantity());
-  } else {
-    // 在订单项更新时，调整库存
-    $origin = $order_item->original;
-    if ($origin instanceof \Drupal\commerce_order\Entity\OrderItemInterface) {
-      $rs = (int)$order_item->getQuantity() - (int)$origin->getQuantity();
-      if ($rs > 0) {
-        // 扣减库存
-        _simple_stock_adjust_stock($order_item->getPurchasedEntity(), 'subtract', abs($rs));
-      } else if ($rs < 0) {
-        // 恢复库存
-        _simple_stock_adjust_stock($order_item->getPurchasedEntity(), 'recover', abs($rs));
+  $order = $order_item->getOrder();
+  if ($order->getState()->value !== 'canceled') {
+    if ($order_item->isNew()) {
+      // 在订单项创建时，扣减库存
+      _simple_stock_adjust_stock($order_item->getPurchasedEntity(), 'subtract', (int)$order_item->getQuantity());
+    } else {
+      // 在订单项更新时，调整库存
+      $origin = $order_item->original;
+      if ($origin instanceof \Drupal\commerce_order\Entity\OrderItemInterface) {
+        $rs = (int)$order_item->getQuantity() - (int)$origin->getQuantity();
+        if ($rs > 0) {
+          // 扣减库存
+          _simple_stock_adjust_stock($order_item->getPurchasedEntity(), 'subtract', abs($rs));
+        } else if ($rs < 0) {
+          // 恢复库存
+          _simple_stock_adjust_stock($order_item->getPurchasedEntity(), 'recover', abs($rs));
+        }
       }
     }
   }
@@ -85,7 +88,8 @@ function simple_stock_cron() {
   \Drupal::logger('simple_stock')->notice($time->getTimestamp());
 
   $commerce_order_query->condition('state', 'draft')
-    ->condition('created', $time->getTimestamp(), '<');
+    ->condition('cart', 1)
+    ->condition('changed', $time->getTimestamp(), '<');
 
   $rs = $commerce_order_query->execute();
 

@@ -2,6 +2,7 @@
 
 namespace Drupal\simple_stock_fixed\Plugin\StockType;
 
+use Drupal\aiqilv_product\Entity\BookingUnitInterface;
 use Drupal\commerce_product\Entity\ProductVariationInterface;
 use Drupal\Core\Entity\ContentEntityInterface;
 use Drupal\Core\Entity\EntityTypeInterface;
@@ -17,7 +18,7 @@ use Drupal\simple_stock\Plugin\StockTypeBase;
 class Fixed extends StockTypeBase {
 
   public function supportEntity(ContentEntityInterface $entity) {
-    return $entity instanceof ProductVariationInterface;
+    return $entity instanceof ProductVariationInterface || $entity instanceof BookingUnitInterface;
   }
 
   public function supportEntityType(EntityTypeInterface $entity_type) {
