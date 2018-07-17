@@ -79,19 +79,41 @@ function simple_stock_commerce_order_item_predelete(\Drupal\commerce_order\Entit
  * @throws \Drupal\Component\Plugin\Exception\PluginNotFoundException
  */
 function simple_stock_cron() {
-  \Drupal::logger('simple_stock')->notice('test!!!');
+  \Drupal::logger('simple_stock')->notice('检查需要自动取消的订单');
   $commerce_order_query = \Drupal::entityTypeManager()->getStorage('commerce_order')->getQuery();
 
-  $time = new DateTime('now');
-  $time->sub(new DateInterval('PT5M'));
+  // TODO:: Make config from UI
+  $config_data = [
+    'default' => 30,
+    'shippable' => 120,
+    'booking_online' => 120,
+    'service_purchasable' => 30
+  ];
 
-  \Drupal::logger('simple_stock')->notice($time->getTimestamp());
+  $rs = [];
 
-  $commerce_order_query->condition('state', 'draft')
-    ->condition('cart', 1)
-    ->condition('changed', $time->getTimestamp(), '<');
+  if (empty($config_data)) {
+    $time = new DateTime('now');
+    $time->sub(new DateInterval('PT30M'));
 
-  $rs = $commerce_order_query->execute();
+    $commerce_order_query->condition('state', 'draft')
+      ->condition('cart', 1)
+      ->condition('changed', $time->getTimestamp(), '<');
+
+    $rs = $commerce_order_query->execute();
+  } else {
+    foreach ($config_data as $order_type=>$minutes) {
+      $time = new DateTime('now');
+      $time->sub(new DateInterval('PT'.$minutes.'M'));
+
+      $commerce_order_query->condition('state', 'draft')
+        ->condition('cart', 1)
+        ->condition('changed', $time->getTimestamp(), '<')
+        ->condition('type', $order_type);
+
+      $rs = array_merge($rs, $commerce_order_query->execute());
+    }
+  }
 
   \Drupal::logger('simple_stock')->notice(count($rs). '个订单超时未支付：' . var_export($rs, true));
 
