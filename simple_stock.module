@@ -34,7 +34,9 @@ function simple_stock_help($route_name, RouteMatchInterface $route_match) {
  */
 function simple_stock_commerce_order_item_presave(\Drupal\commerce_order\Entity\OrderItemInterface $order_item) {
   $order = $order_item->getOrder();
-  if ($order->getState()->value !== 'canceled') {
+  if ($order && $order->getState()->value === 'canceled') {
+    // $order可能会有null的情况
+  } else {
     if ($order_item->isNew()) {
       // 在订单项创建时，扣减库存
       _simple_stock_adjust_stock($order_item->getPurchasedEntity(), 'subtract', (int)$order_item->getQuantity());
