@@ -131,7 +131,13 @@ function simple_stock_cron() {
   }
 }
 
-
+/**
+ * 必须通过调用此方法调整库存，以确保操作的唯一性，防止并发操作
+ * @param $purchased_entity
+ * @param $adjust_type
+ * @param $number
+ * @throws \Drupal\Component\Plugin\Exception\PluginException
+ */
 function _simple_stock_adjust_stock($purchased_entity, $adjust_type, $number) {
   /** @var Drupal\simple_stock\Plugin\StockTypeManager $stock_type_manager */
   $stock_type_manager = \Drupal::getContainer()->get('plugin.manager.stock_type');
@@ -139,6 +145,24 @@ function _simple_stock_adjust_stock($purchased_entity, $adjust_type, $number) {
     /** @var Drupal\simple_stock\Plugin\StockTypeInterface $stock_type */
     $stock_type = $stock_type_manager->createInstance($plugin_id);
     if ($stock_type->supportEntity($purchased_entity)) {
+      _simple_stock_lock_stock_operation($stock_type, $purchased_entity, $adjust_type, $number);
+    }
+  }
+}
+
+function _simple_stock_lock_stock_operation(Drupal\simple_stock\Plugin\StockTypeInterface $stock_type, \Drupal\Core\Entity\ContentEntityInterface $purchased_entity, $adjust_type, $number) {
+  $lock = \Drupal::lock();
+  $operationID = 'simple_stock__stock_adjustment__' . $stock_type->getPluginId() . '__' . $purchased_entity->getEntityTypeId() . '__' . $purchased_entity->id();
+  $is_get_lock = false;
+  $is_get_lock = $lock->acquire($operationID);
+  if (!$is_get_lock) {
+    if (!$lock->wait($operationID, 30)) {
+      $is_get_lock = $lock->acquire($operationID);
+    }
+  }
+  if ($is_get_lock) {
+
+    try {
       switch ($adjust_type) {
         case 'subtract':
           $stock_type->subtractStock($purchased_entity, $number);
@@ -148,6 +172,14 @@ function _simple_stock_adjust_stock($purchased_entity, $adjust_type, $number) {
           $stock_type->recoverStock($purchased_entity, $number);
           break;
       }
+
+      $lock->release($operationID);
+    } catch (\Exception $exception) {
+      $lock->release($operationID);
+      throw $exception;
     }
+
+  } else {
+    throw new \Exception('未能取得操作['.$operationID.']的锁，无法执行库存操作。');
   }
 }
