@@ -82,7 +82,6 @@ function simple_stock_commerce_order_item_predelete(\Drupal\commerce_order\Entit
  */
 function simple_stock_cron() {
   \Drupal::logger('simple_stock')->notice('检查需要自动取消的订单');
-  $commerce_order_query = \Drupal::entityTypeManager()->getStorage('commerce_order')->getQuery();
 
   // TODO:: Make config from UI
   $config_data = [
@@ -95,22 +94,26 @@ function simple_stock_cron() {
   $rs = [];
 
   if (empty($config_data)) {
-    $time = new DateTime('now');
+    $time = new DateTime('now', new DateTimeZone(\Drupal\datetime\Plugin\Field\FieldType\DateTimeItemInterface::STORAGE_TIMEZONE));
     $time->sub(new DateInterval('PT30M'));
 
-    $commerce_order_query->condition('state', 'draft')
-      ->condition('cart', 1)
-      ->condition('changed', $time->getTimestamp(), '<');
+    $commerce_order_query = \Drupal::entityQuery('commerce_order');
+
+    $commerce_order_query
+      ->condition('state', 'draft')
+      ->condition('created', $time->getTimestamp(), '<');
 
     $rs = $commerce_order_query->execute();
   } else {
     foreach ($config_data as $order_type=>$minutes) {
-      $time = new DateTime('now');
+      $time = new DateTime('now', new DateTimeZone(\Drupal\datetime\Plugin\Field\FieldType\DateTimeItemInterface::STORAGE_TIMEZONE));
       $time->sub(new DateInterval('PT'.$minutes.'M'));
 
-      $commerce_order_query->condition('state', 'draft')
-        ->condition('cart', 1)
-        ->condition('changed', $time->getTimestamp(), '<')
+      $commerce_order_query = \Drupal::entityQuery('commerce_order');
+
+      $commerce_order_query
+        ->condition('state', 'draft')
+        ->condition('created', $time->getTimestamp(), '<')
         ->condition('type', $order_type);
 
       $rs = array_merge($rs, $commerce_order_query->execute());
