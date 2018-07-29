@@ -14,6 +14,7 @@ interface StockTypeInterface extends PluginInspectionInterface {
   public function supportEntityType(EntityTypeInterface $entity_type);
   public function stockBaseFieldDefinitions();
   public function getEffectiveStock(ContentEntityInterface $entity);
+  public function getSalesVolume(ContentEntityInterface $entity);
   public function subtractStock(ContentEntityInterface $entity, $number);
   public function recoverStock(ContentEntityInterface $entity, $number);
 }

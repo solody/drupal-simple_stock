@@ -103,4 +103,10 @@ class Normal extends StockTypeBase {
 
     $entity->save();
   }
+
+  public function getSalesVolume(ContentEntityInterface $entity) {
+    if ($entity->hasField('stock_order')) {
+      return $entity->get('stock_order')->value;
+    }
+  }
 }

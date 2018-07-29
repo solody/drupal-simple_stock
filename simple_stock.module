@@ -5,6 +5,7 @@
  * Contains simple_stock.module.
  */
 
+use Drupal\commerce_product_api\Normalizer\ProductNormalizer;
 use Drupal\Core\Entity\EntityTypeInterface;
 use Drupal\Core\Routing\RouteMatchInterface;
 
@@ -185,4 +186,38 @@ function _simple_stock_lock_stock_operation(Drupal\simple_stock\Plugin\StockType
   } else {
     throw new \Exception('未能取得操作['.$operationID.']的锁，无法执行库存操作。');
   }
+}
+
+/**
+ * Implements hook_product_search_result_item_normalized_data_alter
+ *
+ * 为产品搜索接口的结果添加产品总销售量和产品总库存
+ */
+function simple_stock_product_search_result_alter(array &$data,
+                                                                       \Drupal\commerce_product\Entity\ProductInterface $product,
+                                                                       ProductNormalizer $normalizer) {
+  // TODO:: Entity Type不应该是硬编码
+
+  /** @var Drupal\simple_stock\Plugin\StockTypeManager $stock_type_manager */
+  $stock_type_manager = \Drupal::getContainer()->get('plugin.manager.stock_type');
+
+  $stock_info = null;
+
+  foreach ($stock_type_manager->getDefinitions() as $plugin_id => $plugin_definition) {
+    /** @var Drupal\simple_stock\Plugin\StockTypeInterface $stock_type */
+    $stock_type = $stock_type_manager->createInstance($plugin_id);
+    $product_variations = $product->getVariations();
+    if (count($product_variations) && $stock_type->supportEntity($product_variations[0])) {
+      $stock_info[$plugin_id] = [
+        'stock' => 0,
+        'stock_order' => 0
+      ];
+      foreach ($product_variations as $productVariation) {
+        $stock_info[$plugin_id]['stock'] += $stock_type->getEffectiveStock($productVariation);
+        $stock_info[$plugin_id]['stock_order'] += $stock_type->getSalesVolume($productVariation);
+      }
+    }
+  }
+
+  $data['_stock_info'] = $stock_info;
 }
