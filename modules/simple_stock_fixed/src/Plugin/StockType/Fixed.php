@@ -118,8 +118,8 @@ class Fixed extends StockTypeBase {
   }
 
   public function getSalesVolume(ContentEntityInterface $entity) {
-    if ($entity->hasField('stock_order')) {
-      return $entity->get('stock_order')->value;
+    if ($entity->hasField('stock_order') && $entity->hasField('stock_reduce')) {
+      return $entity->get('stock_order')->value + $entity->get('stock_reduce')->value;
     }
   }
 }
