@@ -10,5 +10,7 @@
     "issues": "https://www.drupal.org/project/issues/simple_stock",
     "source": "http://cgit.drupalcode.org/simple_stock"
   },
-  "require": { }
+  "require": {
+      "drupal/readonly_field_widget": "~1.0"
+  }
 }

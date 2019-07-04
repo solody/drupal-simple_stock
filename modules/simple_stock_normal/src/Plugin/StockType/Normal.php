@@ -28,9 +28,9 @@ class Normal extends StockTypeBase {
 
     // stock 库存
     $fields['stock'] = BaseFieldDefinition::create('integer')
-      ->setLabel(t('库存'))
-      ->setDescription(t('即时的有效库存。'))
-      ->setDefaultValue(0)
+      ->setLabel(t('Stock'))
+      ->setDescription(t('The effective stock that can be sells.'))
+      ->setDefaultValue('0')
       ->addConstraint('simple_stock_normal_stock_number')
       ->setDisplayOptions('view', [
         'label' => 'above',
@@ -46,9 +46,9 @@ class Normal extends StockTypeBase {
 
     // stock_order 订单已售
     $fields['stock_order'] = BaseFieldDefinition::create('integer')
-      ->setLabel(t('订单已售'))
-      ->setDescription(t('本系统中的订单已销售掉的库存'))
-      ->setDefaultValue(0)
+      ->setLabel(t('Stock sold'))
+      ->setDescription(t('Stock that consumed by orders.'))
+      ->setDefaultValue('0')
       ->addConstraint('simple_stock_normal_stock_number')
       ->setDisplayOptions('view', [
         'label' => 'above',

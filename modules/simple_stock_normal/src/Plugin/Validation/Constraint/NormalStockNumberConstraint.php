@@ -12,6 +12,12 @@ use Symfony\Component\Validator\Constraint;
  */
 class NormalStockNumberConstraint extends Constraint {
 
-  public $stockNumber = '库存数值不能小于0';
+  public $stockNumber;
+
+  public function __construct($options = null)
+  {
+    parent::__construct($options);
+    $this->stockNumber = t('Stock total can not be less than 0');
+  }
 
 }

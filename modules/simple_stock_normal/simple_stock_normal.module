@@ -41,3 +41,12 @@ function simple_stock_normal_entity_base_field_info(EntityTypeInterface $entity_
 
   return $fields;
 }
+
+
+/**
+ * Implements hook_entity_type_alter().
+ */
+function simple_stock_normal_entity_type_alter(array &$entity_types) {
+  /** @var $entity_types \Drupal\Core\Entity\EntityTypeInterface[] */
+  $entity_types['commerce_product_variation']->setListBuilderClass('Drupal\simple_stock_normal\ProductVariationListBuilder');
+}

@@ -1,8 +1,9 @@
 name: 'Simple Stock'
 type: module
-description: 'My Awesome Module'
+description: 'Provides simple stock system for commerce.'
 core: 8.x
 package: 'Custom'
 dependencies:
-  - commerce_order
-  - commerce_product
+  - commerce:commerce_order
+  - commerce:commerce_product
+  - readonly_field_widget:readonly_field_widget
